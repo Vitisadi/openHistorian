@@ -20,11 +20,26 @@ exports[`Render should render List page 1`] = `
       onShowInvites={[Function]}
       showInvites={false}
     />
-    <UsersTable
-      onRemoveUser={[Function]}
-      onRoleChange={[Function]}
-      users={Array []}
-    />
+    <VerticalGroup
+      spacing="md"
+    >
+      <UsersTable
+        onRemoveUser={[Function]}
+        onRoleChange={[Function]}
+        orgId={1}
+        users={Array []}
+      />
+      <HorizontalGroup
+        justify="flex-end"
+      >
+        <Pagination
+          currentPage={1}
+          hideWhenSinglePage={true}
+          numberOfPages={0}
+          onNavigate={[MockFunction]}
+        />
+      </HorizontalGroup>
+    </VerticalGroup>
   </PageContents>
 </Page>
 `;

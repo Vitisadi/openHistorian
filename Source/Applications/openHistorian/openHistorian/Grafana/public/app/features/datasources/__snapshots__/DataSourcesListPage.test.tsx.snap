@@ -16,10 +16,11 @@ exports[`Render should render action bar and datasources 1`] = `
   <PageContents
     isLoading={false}
   >
-    <OrgActionBar
+    <PageActionBar
       key="action-bar"
       linkButton={
         Object {
+          "disabled": false,
           "href": "datasources/new",
           "title": "Add data source",
         }
@@ -42,7 +43,6 @@ exports[`Render should render action bar and datasources 1`] = `
             },
             "name": "dataSource-0",
             "orgId": 1,
-            "password": "",
             "readOnly": false,
             "type": "cloudwatch",
             "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",
@@ -61,7 +61,6 @@ exports[`Render should render action bar and datasources 1`] = `
             },
             "name": "dataSource-1",
             "orgId": 1,
-            "password": "",
             "readOnly": false,
             "type": "cloudwatch",
             "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",
@@ -80,7 +79,6 @@ exports[`Render should render action bar and datasources 1`] = `
             },
             "name": "dataSource-2",
             "orgId": 1,
-            "password": "",
             "readOnly": false,
             "type": "cloudwatch",
             "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",
@@ -99,7 +97,6 @@ exports[`Render should render action bar and datasources 1`] = `
             },
             "name": "dataSource-3",
             "orgId": 1,
-            "password": "",
             "readOnly": false,
             "type": "cloudwatch",
             "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",
@@ -118,26 +115,6 @@ exports[`Render should render action bar and datasources 1`] = `
             },
             "name": "dataSource-4",
             "orgId": 1,
-            "password": "",
-            "readOnly": false,
-            "type": "cloudwatch",
-            "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",
-            "url": "",
-            "user": "",
-          },
-          Object {
-            "access": "",
-            "basicAuth": false,
-            "database": "database-5",
-            "id": 5,
-            "isDefault": false,
-            "jsonData": Object {
-              "authType": "credentials",
-              "defaultRegion": "eu-west-2",
-            },
-            "name": "dataSource-5",
-            "orgId": 1,
-            "password": "",
             "readOnly": false,
             "type": "cloudwatch",
             "typeLogoUrl": "public/app/plugins/datasource/cloudwatch/img/amazon-web-services.png",

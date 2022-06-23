@@ -1,27 +1,99 @@
-import React, { FC, memo } from 'react';
-import { css } from 'emotion';
-import { useTheme, CustomScrollbar, stylesFactory, IconButton } from '@grafana/ui';
-import { GrafanaTheme } from '@grafana/data';
-import { useSearchQuery } from '../hooks/useSearchQuery';
+import { css } from '@emotion/css';
+import React, { FC, memo, useState } from 'react';
+import { useDebounce, useLocalStorage } from 'react-use';
+
+import { GrafanaTheme2 } from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { CustomScrollbar, IconButton, stylesFactory, useStyles2, useTheme2 } from '@grafana/ui';
+
+import { SEARCH_PANELS_LOCAL_STORAGE_KEY } from '../constants';
 import { useDashboardSearch } from '../hooks/useDashboardSearch';
+import { useKeyNavigationListener } from '../hooks/useSearchKeyboardSelection';
+import { useSearchQuery } from '../hooks/useSearchQuery';
+import { SearchView } from '../page/components/SearchView';
+
+import { ActionRow } from './ActionRow';
+import { PreviewsSystemRequirements } from './PreviewsSystemRequirements';
 import { SearchField } from './SearchField';
 import { SearchResults } from './SearchResults';
-import { ActionRow } from './ActionRow';
-import { connectWithRouteParams, ConnectProps, DispatchProps } from '../connect';
 
-export interface OwnProps {
+export interface Props {
   onCloseSearch: () => void;
 }
 
-export type Props = OwnProps & ConnectProps & DispatchProps;
+export default function DashboardSearch({ onCloseSearch }: Props) {
+  if (config.featureToggles.panelTitleSearch) {
+    // TODO: "folder:current" ????
+    return <DashboardSearchNew onCloseSearch={onCloseSearch} />;
+  }
+  return <DashboardSearchOLD onCloseSearch={onCloseSearch} />;
+}
 
-export const DashboardSearch: FC<Props> = memo(({ onCloseSearch, params, updateLocation }) => {
-  const { query, onQueryChange, onTagFilterChange, onTagAdd, onSortChange, onLayoutChange } = useSearchQuery(
-    params,
-    updateLocation
+function DashboardSearchNew({ onCloseSearch }: Props) {
+  const styles = useStyles2(getStyles);
+  const { query, onQueryChange } = useSearchQuery({});
+
+  let [includePanels, setIncludePanels] = useLocalStorage<boolean>(SEARCH_PANELS_LOCAL_STORAGE_KEY, true);
+  if (!config.featureToggles.panelTitleSearch) {
+    includePanels = false;
+  }
+
+  const [inputValue, setInputValue] = useState(query.query ?? '');
+  const onSearchQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    setInputValue(e.currentTarget.value);
+  };
+
+  useDebounce(() => onQueryChange(inputValue), 200, [inputValue]);
+
+  const { onKeyDown, keyboardEvents } = useKeyNavigationListener();
+
+  return (
+    <div tabIndex={0} className={styles.overlay}>
+      <div className={styles.container}>
+        <div className={styles.searchField}>
+          <div>
+            <input
+              type="text"
+              placeholder={includePanels ? 'Search dashboards and panels by name' : 'Search dashboards by name'}
+              value={inputValue}
+              onChange={onSearchQueryChange}
+              onKeyDown={onKeyDown}
+              tabIndex={0}
+              spellCheck={false}
+              className={styles.input}
+              autoFocus
+            />
+          </div>
+
+          <div className={styles.closeBtn}>
+            <IconButton name="times" onClick={onCloseSearch} size="xxl" tooltip="Close search" />
+          </div>
+        </div>
+        <div className={styles.search}>
+          <SearchView
+            showManage={false}
+            queryText={query.query}
+            onQueryTextChange={(newQueryText) => {
+              setInputValue(newQueryText);
+            }}
+            includePanels={includePanels!}
+            setIncludePanels={setIncludePanels}
+            keyboardEvents={keyboardEvents}
+          />
+        </div>
+      </div>
+    </div>
   );
-  const { results, loading, onToggleSection, onKeyDown } = useDashboardSearch(query, onCloseSearch);
-  const theme = useTheme();
+}
+
+export const DashboardSearchOLD: FC<Props> = memo(({ onCloseSearch }) => {
+  const { query, onQueryChange, onTagFilterChange, onTagAdd, onSortChange, onLayoutChange } = useSearchQuery({});
+  const { results, loading, onToggleSection, onKeyDown, showPreviews, setShowPreviews } = useDashboardSearch(
+    query,
+    onCloseSearch
+  );
+  const theme = useTheme2();
   const styles = getStyles(theme);
 
   return (
@@ -30,17 +102,24 @@ export const DashboardSearch: FC<Props> = memo(({ onCloseSearch, params, updateL
         <div className={styles.searchField}>
           <SearchField query={query} onChange={onQueryChange} onKeyDown={onKeyDown} autoFocus clearable />
           <div className={styles.closeBtn}>
-            <IconButton name="times" surface="panel" onClick={onCloseSearch} size="xxl" tooltip="Close search" />
+            <IconButton name="times" onClick={onCloseSearch} size="xxl" tooltip="Close search" />
           </div>
         </div>
         <div className={styles.search}>
           <ActionRow
             {...{
               onLayoutChange,
+              setShowPreviews,
               onSortChange,
               onTagFilterChange,
               query,
+              showPreviews,
             }}
+          />
+          <PreviewsSystemRequirements
+            bottomSpacing={3}
+            showPreviews={showPreviews}
+            onRemove={() => setShowPreviews(false)}
           />
           <CustomScrollbar>
             <SearchResults
@@ -50,6 +129,7 @@ export const DashboardSearch: FC<Props> = memo(({ onCloseSearch, params, updateL
               editable={false}
               onToggleSection={onToggleSection}
               layout={query.layout}
+              showPreviews={showPreviews}
             />
           </CustomScrollbar>
         </div>
@@ -58,9 +138,9 @@ export const DashboardSearch: FC<Props> = memo(({ onCloseSearch, params, updateL
   );
 });
 
-export default connectWithRouteParams(DashboardSearch);
+DashboardSearchOLD.displayName = 'DashboardSearchOLD';
 
-const getStyles = stylesFactory((theme: GrafanaTheme) => {
+const getStyles = stylesFactory((theme: GrafanaTheme2) => {
   return {
     overlay: css`
       left: 0;
@@ -69,22 +149,27 @@ const getStyles = stylesFactory((theme: GrafanaTheme) => {
       bottom: 0;
       z-index: ${theme.zIndex.sidemenu};
       position: fixed;
-      background: ${theme.colors.dashboardBg};
+      background: ${theme.colors.background.canvas};
+      padding: ${theme.spacing(1)};
 
-      @media only screen and (min-width: ${theme.breakpoints.md}) {
-        left: 60px;
+      ${theme.breakpoints.up('md')} {
+        left: ${theme.components.sidemenu.width}px;
         z-index: ${theme.zIndex.navbarFixed + 1};
+        padding: ${theme.spacing(2)};
       }
     `,
     container: css`
+      display: flex;
+      flex-direction: column;
       max-width: 1400px;
       margin: 0 auto;
-      padding: ${theme.spacing.md};
-
+      padding: ${theme.spacing(1)};
+      background: ${theme.colors.background.primary};
+      border: 1px solid ${theme.components.panel.borderColor};
       height: 100%;
 
-      @media only screen and (min-width: ${theme.breakpoints.md}) {
-        padding: 32px;
+      ${theme.breakpoints.up('md')} {
+        padding: ${theme.spacing(3)};
       }
     `,
     closeBtn: css`
@@ -99,7 +184,23 @@ const getStyles = stylesFactory((theme: GrafanaTheme) => {
     search: css`
       display: flex;
       flex-direction: column;
+      overflow: hidden;
       height: 100%;
+      padding: ${theme.spacing(2, 0, 3, 0)};
+    `,
+    input: css`
+      box-sizing: border-box;
+      outline: none;
+      background-color: transparent;
+      background: transparent;
+      border-bottom: 2px solid ${theme.v1.colors.border1};
+      font-size: 20px;
+      line-height: 38px;
+      width: 100%;
+
+      &::placeholder {
+        color: ${theme.v1.colors.textWeak};
+      }
     `,
   };
 });

@@ -1,41 +1,47 @@
-import React, { Dispatch, FC, FormEvent, SetStateAction } from 'react';
-import { css } from 'emotion';
-import { HorizontalGroup, RadioButtonGroup, stylesFactory, useTheme, Checkbox } from '@grafana/ui';
-import { GrafanaTheme, SelectableValue } from '@grafana/data';
+import { css } from '@emotion/css';
+import React, { FC, ChangeEvent, FormEvent } from 'react';
+
+import { GrafanaTheme2, SelectableValue } from '@grafana/data';
+import { config } from '@grafana/runtime';
+import { HorizontalGroup, RadioButtonGroup, Checkbox, InlineSwitch, useStyles2 } from '@grafana/ui';
 import { SortPicker } from 'app/core/components/Select/SortPicker';
 import { TagFilter } from 'app/core/components/TagFilter/TagFilter';
 import { SearchSrv } from 'app/core/services/search_srv';
+
 import { DashboardQuery, SearchLayout } from '../types';
 
 export const layoutOptions = [
-  { value: SearchLayout.Folders, icon: 'folder' },
-  { value: SearchLayout.List, icon: 'list-ul' },
+  { value: SearchLayout.Folders, icon: 'folder', ariaLabel: 'View by folders' },
+  { value: SearchLayout.List, icon: 'list-ul', ariaLabel: 'View as list' },
 ];
 
 const searchSrv = new SearchSrv();
 
-type onSelectChange = (value: SelectableValue) => void;
 interface Props {
-  onLayoutChange: Dispatch<SetStateAction<string>>;
-  onSortChange: onSelectChange;
+  onLayoutChange: (layout: SearchLayout) => void;
+  setShowPreviews: (newValue: boolean) => void;
+  onSortChange: (value: SelectableValue) => void;
   onStarredFilterChange?: (event: FormEvent<HTMLInputElement>) => void;
-  onTagFilterChange: onSelectChange;
+  onTagFilterChange: (tags: string[]) => void;
   query: DashboardQuery;
   showStarredFilter?: boolean;
   hideLayout?: boolean;
+  showPreviews?: boolean;
 }
 
 export const ActionRow: FC<Props> = ({
   onLayoutChange,
+  setShowPreviews,
   onSortChange,
   onStarredFilterChange = () => {},
   onTagFilterChange,
   query,
   showStarredFilter,
   hideLayout,
+  showPreviews,
 }) => {
-  const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles = useStyles2(getStyles);
+  const previewsEnabled = config.featureToggles.dashboardPreviews;
 
   return (
     <div className={styles.actionRow}>
@@ -45,6 +51,16 @@ export const ActionRow: FC<Props> = ({
             <RadioButtonGroup options={layoutOptions} onChange={onLayoutChange} value={query.layout} />
           ) : null}
           <SortPicker onChange={onSortChange} value={query.sort?.value} />
+          {previewsEnabled && (
+            <InlineSwitch
+              id="search-show-previews"
+              label="Show previews"
+              showLabel
+              value={showPreviews}
+              onChange={(ev: ChangeEvent<HTMLInputElement>) => setShowPreviews(ev.target.checked)}
+              transparent
+            />
+          )}
         </HorizontalGroup>
       </div>
       <HorizontalGroup spacing="md" width="auto">
@@ -61,21 +77,21 @@ export const ActionRow: FC<Props> = ({
 
 ActionRow.displayName = 'ActionRow';
 
-const getStyles = stylesFactory((theme: GrafanaTheme) => {
+export const getStyles = (theme: GrafanaTheme2) => {
   return {
     actionRow: css`
       display: none;
 
-      @media only screen and (min-width: ${theme.breakpoints.md}) {
+      ${theme.breakpoints.up('md')} {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: ${theme.spacing.lg} 0;
+        padding-bottom: ${theme.spacing(2)};
         width: 100%;
       }
     `,
     rowContainer: css`
-      margin-right: ${theme.spacing.md};
+      margin-right: ${theme.spacing(1)};
     `,
     checkboxWrapper: css`
       label {
@@ -83,4 +99,4 @@ const getStyles = stylesFactory((theme: GrafanaTheme) => {
       }
     `,
   };
-});
+};
