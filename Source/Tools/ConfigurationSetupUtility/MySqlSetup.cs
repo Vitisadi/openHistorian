@@ -325,7 +325,7 @@ namespace ConfigurationSetupUtility
             Dictionary<string, string> settings;
             string assemblyName, connectionTypeName, adapterTypeName;
             Assembly assembly;
-            Type connectionType, adapterType;
+            Type connectionType; //, adapterType;
             string dataProviderString;
 
             dataProviderString = m_dataProviderString;

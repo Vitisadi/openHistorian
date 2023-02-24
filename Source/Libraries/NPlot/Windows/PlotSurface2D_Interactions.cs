@@ -1291,7 +1291,7 @@ namespace NPlot.Windows
                         {
                             if (o is Axis)
                             {
-                                PhysicalAxis[] physicalAxisList;
+                                //PhysicalAxis[] physicalAxisList;
                                 _ = new PhysicalAxis[] { ps.PhysicalXAxis1Cache, ps.PhysicalXAxis2Cache };
 
                                 if (ps.PhysicalXAxis1Cache.Axis == axis_)
