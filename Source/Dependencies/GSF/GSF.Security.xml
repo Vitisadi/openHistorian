@@ -4,6 +4,13 @@
         <name>GSF.Security</name>
     </assembly>
     <members>
+        <member name="M:GSF.Security.AzureADPassthroughPrincipal.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:GSF.Security.AzureADPassthroughPrincipal" />
+            class representing an Azure AD user with a passthrough principal.
+            </summary>
+            <param name="name">The name of the user on whose behalf the code is running.</param>
+        </member>
         <member name="T:GSF.Security.AzureADSettings">
             <summary>
             Represents settings needed for Azure Active Directory (AD) authentication.
@@ -1030,6 +1037,16 @@
         <member name="P:GSF.Security.OIDCUserData.Token">
             <summary>
             Gets or sets the <see cref="T:GSF.Security.TokenResponse"/> associated with this user.
+            </summary>
+        </member>
+        <member name="T:GSF.Security.TokenCacheHelper">
+            <summary>
+            Defines a helper class for token cache management.
+            </summary>
+        </member>
+        <member name="P:GSF.Security.TokenCacheHelper.CacheFilePath">
+            <summary>
+            Path to the token cache.
             </summary>
         </member>
         <member name="T:GSF.Security.UserRoleCache">
