@@ -368,3 +368,4 @@ cython_debug/
 # Virtualenv
 /Source/Libraries/PythonAPIModule/**/Scripts
 pyvenv.cfg
+/Source/Dependencies/GSF/NUglify.dll
