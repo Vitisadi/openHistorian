@@ -421,6 +421,37 @@ namespace openHistorian.Adapters
         }
 
         /// <summary>
+        /// Queries openHistorian as a Grafana Metadata options source.
+        /// </summary>
+        /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
+        [HttpPost]
+        [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
+        public Task<IHttpActionResult> GetMetadataOptions(CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Get the columns collection from the table
+                DataColumnCollection columns = DataSource.Metadata.Tables["ActiveMeasurements"].Columns;
+
+                // Create an array to hold column names
+                string[] columnNames = new string[columns.Count];
+
+                // Add each column name to the array
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    columnNames[i] = columns[i].ColumnName;
+                }
+
+                return Task.FromResult<IHttpActionResult>(Ok(columnNames));
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<IHttpActionResult>(InternalServerError(ex));
+            }
+        }
+
+
+        /// <summary>
         /// Queries openHistorian location data for Grafana offsetting duplicate coordinates using a radial distribution.
         /// </summary>
         /// <param name="radius">Radius of overlapping coordinate distribution.</param>
