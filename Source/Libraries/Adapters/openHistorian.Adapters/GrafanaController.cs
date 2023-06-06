@@ -419,6 +419,40 @@ namespace openHistorian.Adapters
             },
             cancellationToken);
         }
+        /// <summary>
+        /// Queries openHistorian as a Grafana Metadatas source for multiple targets.
+        /// </summary>
+        /// <param name="requests">Array of query requests.</param>
+        /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
+        [HttpPost]
+        [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
+        public virtual Task<string> GetMetadatas(Target[] requests, CancellationToken cancellationToken)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                var targetDataDict = new Dictionary<string, DataTable>();
+
+                foreach (var request in requests)
+                {
+                    if (string.IsNullOrWhiteSpace(request.target))
+                        continue;
+
+                    DataRow[] rows = DataSource?.Metadata.Tables["ActiveMeasurements"].Select($"PointTag = '{request.target}'") ?? new DataRow[0];
+
+                    if (rows.Length > 0)
+                    {
+                        DataTable dt = rows.CopyToDataTable();
+                        targetDataDict[request.target] = dt;
+                    }
+                }
+
+                return JsonConvert.SerializeObject(targetDataDict);
+            },
+            cancellationToken);
+        }
+
+
+
 
         /// <summary>
         /// Queries openHistorian as a Grafana Metadata options source.
