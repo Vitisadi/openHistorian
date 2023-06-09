@@ -419,6 +419,25 @@ namespace openHistorian.Adapters
             },
             cancellationToken);
         }
+
+        /// <summary>
+        /// Represents a request object for metadata results.
+        /// </summary>
+        public class MetadataTargetRequest
+        {
+            /// <summary>
+            /// Gets or sets the target string.
+            /// </summary>
+            public string Target { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tables array.
+            /// </summary>
+            public string[] Tables { get; set; }
+        }
+
+
+
         /// <summary>
         /// Queries openHistorian as a Grafana Metadatas source for multiple targets.
         /// </summary>
@@ -426,29 +445,36 @@ namespace openHistorian.Adapters
         /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
         [HttpPost]
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
-        public virtual Task<string> GetMetadatas(Target[] requests, CancellationToken cancellationToken)
+        public virtual Task<string> GetMetadatas(MetadataTargetRequest[] requests, CancellationToken cancellationToken)
         {
             return Task.Factory.StartNew(() =>
             {
-                var targetDataDict = new Dictionary<string, DataTable>();
+                var targetDataDict = new Dictionary<string, Dictionary<string, DataTable>>();
 
                 foreach (var request in requests)
                 {
-                    if (string.IsNullOrWhiteSpace(request.target))
+                    if (string.IsNullOrWhiteSpace(request.Target))
                         continue;
 
-                    DataRow[] rows = DataSource?.Metadata.Tables["ActiveMeasurements"].Select($"PointTag = '{request.target}'") ?? new DataRow[0];
+                    var tableDataDict = new Dictionary<string, DataTable>();
 
-                    if (rows.Length > 0)
+                    foreach (var table in request.Tables)
                     {
-                        DataTable dt = rows.CopyToDataTable();
-                        targetDataDict[request.target] = dt;
+                        DataRow[] rows = DataSource?.Metadata.Tables[table].Select($"PointTag = '{request.Target}'") ?? new DataRow[0];
+                        if (rows.Length > 0)
+                        {
+                            DataTable dt = rows.CopyToDataTable();
+                            tableDataDict[table] = dt;
+                        }
                     }
+
+                    targetDataDict[request.Target] = tableDataDict;
                 }
 
                 return JsonConvert.SerializeObject(targetDataDict);
             },
             cancellationToken);
+
         }
 
         /// <summary>
@@ -529,8 +555,11 @@ namespace openHistorian.Adapters
                         table.Columns.Contains("Adder") &&
                         table.Columns.Contains("Multiplier");
 
+                    // Check if the table has actual data
+                    bool hasData = table.Rows.Count > 0;
+
                     // If the table has the expected columns, add its name to the list
-                    if (hasExpectedColumns)
+                    if (hasExpectedColumns && hasData)
                     {
                         tableNames.Add(table.TableName);
                     }
