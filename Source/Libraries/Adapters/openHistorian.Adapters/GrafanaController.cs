@@ -451,7 +451,55 @@ namespace openHistorian.Adapters
             cancellationToken);
         }
 
+        /// <summary>
+        /// Represents a request object for metadata options.
+        /// </summary>
+        public class MetadataOptionsRequest
+        {
+            /// <summary>
+            /// Gets or sets the array of table names.
+            /// </summary>
+            public string[] Tables { get; set; }
+        }
 
+
+        /// <summary>
+        /// Queries openHistorian as a Grafana Metadata options source.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
+        [HttpPost]
+        [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
+        public Task<IHttpActionResult> GetMetadataOptions([FromBody] MetadataOptionsRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                Dictionary<string, List<string>> tableColumnNames = new Dictionary<string, List<string>>();
+
+                foreach (string table in request.Tables)
+                {
+                    if (DataSource.Metadata.Tables.Contains(table))
+                    {
+                        DataColumnCollection columns = DataSource.Metadata.Tables[table].Columns;
+
+                        List<string> columnNames = new List<string>();
+
+                        for (int i = 0; i < columns.Count; i++)
+                        {
+                            columnNames.Add(columns[i].ColumnName);
+                        }
+
+                        tableColumnNames[table] = columnNames;
+                    }
+                }
+
+                return Task.FromResult<IHttpActionResult>(Ok(tableColumnNames));
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<IHttpActionResult>(InternalServerError(ex));
+            }
+        }
 
 
         /// <summary>
@@ -460,23 +508,35 @@ namespace openHistorian.Adapters
         /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
         [HttpPost]
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
-        public Task<IHttpActionResult> GetMetadataOptions(CancellationToken cancellationToken)
+        public Task<IHttpActionResult> GetTableOptions(CancellationToken cancellationToken)
         {
             try
             {
-                // Get the columns collection from the table
-                DataColumnCollection columns = DataSource.Metadata.Tables["ActiveMeasurements"].Columns;
+                // Get the tables collection from the metadata
+                DataTableCollection tables = DataSource.Metadata.Tables;
 
-                // Create an array to hold column names
-                string[] columnNames = new string[columns.Count];
+                // Create a list to hold the table names
+                List<string> tableNames = new List<string>();
 
-                // Add each column name to the array
-                for (int i = 0; i < columns.Count; i++)
+                // Iterate over each table
+                foreach (DataTable table in tables)
                 {
-                    columnNames[i] = columns[i].ColumnName;
+                    // Check if the table has the expected columns
+                    bool hasExpectedColumns =
+                        table.Columns.Contains("ID") &&
+                        table.Columns.Contains("SignalID") &&
+                        table.Columns.Contains("PointTag") &&
+                        table.Columns.Contains("Adder") &&
+                        table.Columns.Contains("Multiplier");
+
+                    // If the table has the expected columns, add its name to the list
+                    if (hasExpectedColumns)
+                    {
+                        tableNames.Add(table.TableName);
+                    }
                 }
 
-                return Task.FromResult<IHttpActionResult>(Ok(columnNames));
+                return Task.FromResult<IHttpActionResult>(Ok(tableNames));
             }
             catch (Exception ex)
             {
