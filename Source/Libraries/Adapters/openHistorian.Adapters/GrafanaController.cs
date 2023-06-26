@@ -22,8 +22,10 @@
 //******************************************************************************************************
 
 using GrafanaAdapters;
+using GrafanaAdapters.GrafanaFunctions;
 using GSF;
 using GSF.Collections;
+using GSF.IO;
 using GSF.Snap;
 using GSF.Snap.Filters;
 using GSF.Snap.Services;
@@ -35,6 +37,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -109,7 +112,7 @@ namespace openHistorian.Adapters
             /// <param name="includePeaks">Flag that determines if decimated data should include min/max interval peaks over provided time range.</param>
             /// <param name="targetMap">Set of IDs with associated targets to query.</param>
             /// <returns>Queried data source data in terms of value and time.</returns>
-            protected override IEnumerable<DataSourceValue> QueryDataSourceValues(DateTime startTime, DateTime stopTime, string interval, bool includePeaks, Dictionary<ulong, string> targetMap)
+            public override IEnumerable<DataSourceValue> QueryDataSourceValues(DateTime startTime, DateTime stopTime, string interval, bool includePeaks, Dictionary<ulong, string> targetMap)
             {
                 SnapServer server = GetAdapterInstance(InstanceName)?.Server?.Host;
 
@@ -342,7 +345,7 @@ namespace openHistorian.Adapters
             return DataSource?.Query(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
         }
 
-
+        
         /// <summary>
         /// Queries openHistorian for Device Alarm Status.
         /// </summary>
@@ -566,6 +569,36 @@ namespace openHistorian.Adapters
                 }
 
                 return Task.FromResult<IHttpActionResult>(Ok(tableNames));
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult<IHttpActionResult>(InternalServerError(ex));
+            }
+        }
+
+        /// <summary>
+        /// Queries openHistorian as a Grafana Functions options source.
+        /// </summary>
+        /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
+        [HttpPost]
+        [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
+        public Task<IHttpActionResult> GetFunctions(CancellationToken cancellationToken)
+        {
+            try
+            {
+                List<Type> implementationTypes = typeof(IGrafanaFunction).LoadImplementations(FilePath.GetAbsolutePath("").EnsureEnd(Path.DirectorySeparatorChar), true, false).ToList();
+                List<object> grafanaFunctions = new List<object>();
+
+                foreach (Type type in implementationTypes)
+                {
+                    if (type.GetConstructor(Type.EmptyTypes) != null) // Check if the type has a parameterless constructor
+                    {
+                        IGrafanaFunction instance = (IGrafanaFunction)Activator.CreateInstance(type);
+                        grafanaFunctions.Add(instance);
+                    }
+                }
+
+                return Task.FromResult<IHttpActionResult>(Ok(grafanaFunctions));
             }
             catch (Exception ex)
             {
