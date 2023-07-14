@@ -111,7 +111,7 @@ namespace openHistorian.OSIPIGrafanaController
             /// <param name="decimate">Flag that determines if data should be decimated over provided time range.</param>
             /// <param name="targetMap">Set of IDs with associated targets to query.</param>
             /// <returns>Queried data source data in terms of value and time.</returns>
-            protected override IEnumerable<DataSourceValue> QueryDataSourceValues(DateTime startTime, DateTime stopTime, string interval, bool decimate, Dictionary<ulong, string> targetMap)
+            public override IEnumerable<T> QueryDataSourceValues<T>(DateTime startTime, DateTime stopTime, string interval, bool decimate, Dictionary<ulong, string> targetMap)
             {
                 Dictionary<int, ulong> idMap = new Dictionary<int, ulong>();
                 PIPointList points = new PIPointList();
@@ -142,13 +142,15 @@ namespace openHistorian.OSIPIGrafanaController
                         if (currentPoint is null)
                             continue;
 
-                        yield return new DataSourceValue
+                        DataSourceValue dataSourceValue = new DataSourceValue
                         {
                             Target = targetMap[idMap[currentPoint.PIPoint.ID]],
                             Time = (currentPoint.Timestamp.UtcTime.Ticks - m_baseTicks) / (double)Ticks.PerMillisecond,
                             Value = Convert.ToDouble(currentPoint.Value),
                             Flags = ConvertStatusFlags(currentPoint.Status)
                         };
+
+                        yield return (T)(object)dataSourceValue;
                     }
                 }
             }
@@ -231,7 +233,14 @@ namespace openHistorian.OSIPIGrafanaController
             if (request.targets.FirstOrDefault()?.target is null)
                 return Task.FromResult(new List<TimeSeriesValues>());
 
-            return DataSource(instanceName, serverName)?.Query(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            if (request != null && request.isPhasor)
+            {
+                return DataSource(instanceName, serverName)?.Query<PhasorValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
+            else
+            {
+                return DataSource(instanceName, serverName)?.Query<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
         }
 
         /// <summary>
@@ -328,7 +337,7 @@ namespace openHistorian.OSIPIGrafanaController
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to data access.")]
         public Task<List<AnnotationResponse>> Annotations(string instanceName, string serverName, AnnotationRequest request, CancellationToken cancellationToken)
         {
-            return DataSource(instanceName, serverName)?.Annotations(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
+            return DataSource(instanceName, serverName)?.Annotations<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
         }
 
         /// <summary>

@@ -87,7 +87,7 @@ namespace openHistorian.eDNAGrafanaController
             /// <param name="decimate">Flag that determines if data should be decimated over provided time range.</param>
             /// <param name="targetMap">Set of IDs with associated targets to query.</param>
             /// <returns>Queried data source data in terms of value and time.</returns>
-            protected override IEnumerable<DataSourceValue> QueryDataSourceValues(DateTime startTime, DateTime stopTime, string interval, bool decimate, Dictionary<ulong, string> targetMap)
+            public override IEnumerable<T> QueryDataSourceValues<T>(DateTime startTime, DateTime stopTime, string interval, bool decimate, Dictionary<ulong, string> targetMap)
             {
                 foreach (string point in targetMap.Values)
                 {
@@ -105,13 +105,17 @@ namespace openHistorian.eDNAGrafanaController
                         DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0);
 
                         if (result == 0)
-                            yield return new DataSourceValue()
+                        {
+                            DataSourceValue dataSourceValue = new DataSourceValue()
                             {
                                 Target = point,
                                 Time = time.Subtract(epoch).TotalMilliseconds,
                                 Value = value,
                                 Flags = MeasurementStateFlags.Normal
                             };
+
+                            yield return (T)(object)dataSourceValue;
+                        }
                     }
 
                     // Assume that unexpected return status indicates an error
@@ -388,7 +392,14 @@ namespace openHistorian.eDNAGrafanaController
                 RefreshMetaData(site.ToUpper(), service.ToUpper());
             }
 
-            return DataSources[$"{site.ToUpper()}.{service.ToUpper()}"]?.Query(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            if (request != null && request.isPhasor)
+            {
+                return DataSources[$"{site.ToUpper()}.{service.ToUpper()}"]?.Query<PhasorValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
+            else
+            {
+                return DataSources[$"{site.ToUpper()}.{service.ToUpper()}"]?.Query<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
         }
 
         /// <summary>
@@ -511,7 +522,7 @@ namespace openHistorian.eDNAGrafanaController
                 RefreshMetaData(site.ToUpper(), service.ToUpper());
             }
 
-            return DataSources[$"{site.ToUpper()}.{service.ToUpper()}"]?.Annotations(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
+            return DataSources[$"{site.ToUpper()}.{service.ToUpper()}"]?.Annotations<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
         }
 
         /// <summary>

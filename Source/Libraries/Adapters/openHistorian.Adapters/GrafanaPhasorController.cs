@@ -274,7 +274,7 @@ namespace openHistorian.Adapters
                     phasorTarget.target = string.Join(";", newMags) + ";" + string.Join(";", newAngles) + ";" + string.Join(";", newPowers);
                 }
 
-                List<TimeSeriesValues> queryValues = DataSource?.Query((QueryRequest)request, cancellationToken).Result;
+                List<TimeSeriesValues> queryValues = DataSource?.Query<PhasorValue>((QueryRequest)request, cancellationToken).Result;
 
                 List<TimeSeriesPhasorValues> result = valueGroups.Select(valueGroup => new TimeSeriesPhasorValues { target = valueGroup.Target, pointtag = valueGroup.Target, latitude = valueGroup.Latitude, longitude = valueGroup.Longitude, tolatitude = valueGroup.ToLatitude, tolongitude = valueGroup.ToLongitude, todevicepointtag = valueGroup.DestinationPhasorLabel, powerpointtag = valueGroup.PowerTarget, anglepointtag = valueGroup.AngleTarget, toanglepointtag = valueGroup.ToAngleTarget, magpointtag = valueGroup.MagnitudeTarget }).ToList();
 

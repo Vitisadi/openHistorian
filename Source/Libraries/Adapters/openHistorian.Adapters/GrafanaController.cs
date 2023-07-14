@@ -112,7 +112,7 @@ namespace openHistorian.Adapters
             /// <param name="includePeaks">Flag that determines if decimated data should include min/max interval peaks over provided time range.</param>
             /// <param name="targetMap">Set of IDs with associated targets to query.</param>
             /// <returns>Queried data source data in terms of value and time.</returns>
-            public override IEnumerable<DataSourceValue> QueryDataSourceValues(DateTime startTime, DateTime stopTime, string interval, bool includePeaks, Dictionary<ulong, string> targetMap)
+            public override IEnumerable<T> QueryDataSourceValues<T>(DateTime startTime, DateTime stopTime, string interval, bool includePeaks, Dictionary<ulong, string> targetMap)
             {
                 SnapServer server = GetAdapterInstance(InstanceName)?.Server?.Host;
 
@@ -198,37 +198,43 @@ namespace openHistorian.Adapters
                             {
                                 if (peak.MinTimestamp > 0UL)
                                 {
-                                    yield return new DataSourceValue
+                                    DataSourceValue dataSourceValue = new DataSourceValue
                                     {
                                         Target = target,
                                         Value = peak.Min,
                                         Time = (peak.MinTimestamp - m_baseTicks) / (double)Ticks.PerMillisecond,
                                         Flags = (MeasurementStateFlags)peak.MinFlags
                                     };
+
+                                    yield return (T)(object)dataSourceValue;
                                 }
 
                                 if (peak.MaxTimestamp != peak.MinTimestamp)
                                 {
-                                    yield return new DataSourceValue
+                                    DataSourceValue dataSourceValue = new DataSourceValue
                                     {
                                         Target = target,
                                         Value = peak.Max,
                                         Time = (peak.MaxTimestamp - m_baseTicks) / (double)Ticks.PerMillisecond,
                                         Flags = (MeasurementStateFlags)peak.MaxFlags
                                     };
+
+                                    yield return (T)(object)dataSourceValue;
                                 }
 
                                 peak.Reset();
                             }
                             else
                             {
-                                yield return new DataSourceValue
+                                DataSourceValue dataSourceValue = new DataSourceValue
                                 {
                                     Target = target,
                                     Value = pointValue,
                                     Time = (timestamp - m_baseTicks) / (double)Ticks.PerMillisecond,
                                     Flags = (MeasurementStateFlags)value.Value3
                                 };
+
+                                yield return (T)(object)dataSourceValue;
                             }
 
                             lastTimes[pointID] = timestamp;
@@ -341,8 +347,14 @@ namespace openHistorian.Adapters
             if (request.targets.FirstOrDefault()?.target is null)
                 return Task.FromResult(new List<TimeSeriesValues>());
 
-            
-            return DataSource?.Query(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            if (request != null && request.isPhasor)
+            {
+                return DataSource?.Query<PhasorValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
+            else
+            {
+                return DataSource?.Query<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<TimeSeriesValues>());
+            }
         }
 
         
@@ -586,9 +598,8 @@ namespace openHistorian.Adapters
         {
             try
             {
-                List<Type> implementationTypes = typeof(IGrafanaFunction).LoadImplementations(FilePath.GetAbsolutePath("").EnsureEnd(Path.DirectorySeparatorChar), true, false).ToList();
                 List<object> grafanaFunctions = new List<object>();
-
+                List<Type> implementationTypes = typeof(IGrafanaFunction).LoadImplementations(FilePath.GetAbsolutePath("").EnsureEnd(Path.DirectorySeparatorChar), true, false).ToList();
                 foreach (Type type in implementationTypes)
                 {
                     if (type.GetConstructor(Type.EmptyTypes) != null) // Check if the type has a parameterless constructor
@@ -597,7 +608,7 @@ namespace openHistorian.Adapters
                         grafanaFunctions.Add(instance);
                     }
                 }
-
+                
                 return Task.FromResult<IHttpActionResult>(Ok(grafanaFunctions));
             }
             catch (Exception ex)
@@ -692,7 +703,7 @@ namespace openHistorian.Adapters
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to data access.")]
         public virtual Task<List<AnnotationResponse>> Annotations(AnnotationRequest request, CancellationToken cancellationToken)
         {
-            return DataSource?.Annotations(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
+            return DataSource?.Annotations<DataSourceValue>(request, cancellationToken) ?? Task.FromResult(new List<AnnotationResponse>());
         }
 
         /// <summary>
