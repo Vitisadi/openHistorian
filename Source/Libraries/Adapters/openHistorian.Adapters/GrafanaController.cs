@@ -542,14 +542,25 @@ namespace openHistorian.Adapters
             }
         }
 
+        /// <summary>
+        /// Represents a request object for table options.
+        /// </summary>
+        public class TableOptionsRequest
+        {
+            /// <summary>
+            /// Specifies mode of table.
+            /// </summary>
+            public bool IsPhasor { get; set; }
+        }
 
         /// <summary>
         /// Queries openHistorian as a Grafana Metadata options source.
         /// </summary>
+        /// <param name="request">A boolean indicating whether the data is a phasor.</param>
         /// <param name="cancellationToken">Propagates notification from client that operations should be canceled.</param>
         [HttpPost]
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
-        public Task<IHttpActionResult> GetTableOptions(CancellationToken cancellationToken)
+        public Task<IHttpActionResult> GetTableOptions([FromBody] TableOptionsRequest request, CancellationToken cancellationToken)
         {
             try
             {
@@ -558,6 +569,13 @@ namespace openHistorian.Adapters
 
                 // Create a list to hold the table names
                 List<string> tableNames = new List<string>();
+
+                // Phasor mode only has one table
+                if (request != null && request.IsPhasor)
+                {
+                    tableNames.Add("Phasor");
+                    return Task.FromResult<IHttpActionResult>(Ok(tableNames));
+                }
 
                 // Iterate over each table
                 foreach (DataTable table in tables)
