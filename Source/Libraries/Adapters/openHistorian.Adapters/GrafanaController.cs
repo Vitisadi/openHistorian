@@ -673,7 +673,30 @@ namespace openHistorian.Adapters
         [SuppressMessage("Security", "SG0016", Justification = "Current operation dictated by Grafana. CSRF exposure limited to meta-data access.")]
         public virtual Task<string[]> Search(Target request, CancellationToken cancellationToken)
         {
-            return DataSource?.Search(request, cancellationToken) ?? Task.FromResult(new string[0]);
+            string target = request.target ?? "";
+            List<string> res = new List<string>();
+            if (request.isPhasor)
+            {
+                // Execute the query in an asynchronous manner
+                res = DataSource.Metadata.Tables["Phasor"]
+                    .Select($"Label LIKE '%{target}%'")
+                    .Take(DataSource.MaximumSearchTargetsPerRequest)
+                    .Select(row => row["Label"].ToString())
+                    .ToList();
+            }
+            else
+            {
+                res = DataSource.Metadata.Tables["ActiveMeasurements"]
+                    .Select($"ID LIKE '{DataSource.InstanceName}:%' AND PointTag LIKE '%{target}%'")
+                    .Take(DataSource.MaximumSearchTargetsPerRequest)
+                    .Select(row => $"{row["PointTag"]}")
+                    .ToList();
+            }
+
+            string[] resultArray = res.ToArray();
+            return Task.FromResult(resultArray);
+
+            //return DataSource?.Search(request, cancellationToken) ?? Task.FromResult(new string[0]);
         }
 
         /// <summary>
